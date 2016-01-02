@@ -1,5 +1,6 @@
 <?
 session_start();
+date_default_timezone_set(file_get_contents("http://rhiaro.co.uk/tz"));
 if(isset($_GET['logout'])){ session_unset(); session_destroy(); header("Location: /obtanium"); }
 if(isset($_GET['reset'])) { $_SESSION['images'] = set_default_images(); header("Location: /obtainium"); }
 
@@ -24,9 +25,9 @@ $images = set_default_images();
 
 if(isset($_SESSION['images'])){
   $images = $_SESSION['images'];
-}elseif(isset($_SESSION['me']) && in_array($_SESSION['me'], $vips)){
-  $images = get_images("http://img.amy.gy/obtanium");
-}
+}//elseif(isset($_SESSION['me']) && in_array($_SESSION['me'], $vips)){
+//  $images = get_images("http://img.amy.gy/obtanium");
+//}
 if(isset($_POST['images_source'])){
   $fetch = get_images($_POST['images_source']);
   if(!$fetch){
@@ -132,17 +133,24 @@ function get_images($source=null){
 }
 
 function set_default_images(){
-  $_SESSION['images'] = array(array("@id" => "http://rhiaro.co.uk/stash/dp.png"));
+  $collection = json_decode(file_get_contents("http://img.amy.gy/files/food/food.json"), true);
+  if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
+  if(isset($aspref)){
+    $_SESSION['images'] = $collection[$aspref.":items"];
+  }else{
+    $_SESSION['images'] = $collection["items"];
+  }
+  $_SESSION['image_source'] = $collection["@id"];
+  
 }
 
 function form_to_json($post){
   $data = as2();
-  $data['location'] = $post['location'];
-  if(isset($post['published'])){
-    $data['published'] = $post['published'];
-  }else{
-    $data['published'] = date(DATE_ATOM);
-  }
+  $data = $post;
+  unset($data['obtain']);
+  $data['published'] = $post['year']."-".$post['month']."-".$post['day']."T".$post['time'].$post['zone'];
+  unset($data['year']); unset($data['month']); unset($data['day']); unset($data['time']); unset($data['zone']);
+  if(isset($post['image'])) $data['image'] = array("@id" => $post['image'][0]);
   $json = stripslashes(json_encode($data, JSON_PRETTY_PRINT));
   return $json;
 }
@@ -165,6 +173,7 @@ if(isset($_POST['obtain'])){
   if(isset($_SESSION['me'])){
     $endpoint = discover_endpoint($_SESSION['me']);
     $result = post_to_endpoint(form_to_json($_POST), $endpoint);
+    var_dump(form_to_json($_POST));
   }else{
     $errors["Not signed in"] = "You need to sign in to post.";
   }
@@ -205,10 +214,27 @@ if(isset($_POST['obtain'])){
         <p><input type="submit" value="Post" class="neat" name="obtain" /></p>
         <p><label for="summary" class="neat">Description</label> <input type="text" name="summary" id="summary" class="neat" /></p>
         <p><label for="cost" class="neat">Cost</label> <input type="text" name="cost" id="cost"class="neat" /></p>
-        <p><label for="published" class="neat">Published</label> <input type="text" name="published" id="published" class="neat" /></p>
-        <ul>
+        <p>
+          <select name="year" id="year">
+            <option value="2016" selected>2016</option>
+            <option value="2016">2015</option>
+          </select>
+          <select name="month" id="month">
+            <?for($i=1;$i<=12;$i++):?>
+              <option value="<?=date("m", strtotime("2016-$i-01"))?>"<?=(date("n") == $i) ? " selected" : ""?>><?=date("M", strtotime("2016-$i-01"))?></option>
+            <?endfor?>
+          </select>
+          <select name="day" id="day">
+            <?for($i=1;$i<=31;$i++):?>
+              <option value="<?=date("d", strtotime("2016-01-$i"))?>"<?=(date("j") == $i) ? " selected" : ""?>><?=date("d", strtotime("2016-01-$i"))?></option>
+            <?endfor?>
+          </select>
+          <input type="text" name="time" id="time" value="<?=date("H:i:s")?>" />
+          <input type="text" name="zone" id="zone" value="<?=date("P")?>" />
+        </p>
+        <ul class="clearfix">
           <?foreach($images as $image):?>
-            <li><p><input type="radio" name="image[]" id="image" /> <label for="image"><img src="<?=$image["@id"]?>" /></label></p></li>
+            <li class="w1of5"><p><input type="radio" name="image[]" id="image" value="<?=$image["@id"]?>" /> <label for="image"><img src="<?=$image["@id"]?>" width="100px" /></label></p></li>
           <?endforeach?>
         </ul>
       </form>
