@@ -1,12 +1,12 @@
 <?
 session_start();
 date_default_timezone_set(file_get_contents("http://rhiaro.co.uk/tz"));
-if(isset($_GET['logout'])){ session_unset(); session_destroy(); header("Location: /obtanium"); }
+if(isset($_GET['logout'])){ session_unset(); session_destroy(); header("Location: /obtainium"); }
 if(isset($_GET['reset'])) { $_SESSION['images'] = set_default_images(); header("Location: /obtainium"); }
 
 include "link-rel-parser.php";
 
-$base = "https://apps.rhiaro.co.uk/obtanium";
+$base = "https://apps.rhiaro.co.uk/obtainium";
 if(isset($_GET['code'])){
   $auth = auth($_GET['code'], $_GET['state']);
   if($auth !== true){ $errors = $auth; }
@@ -26,7 +26,7 @@ $images = set_default_images();
 if(isset($_SESSION['images'])){
   $images = $_SESSION['images'];
 }//elseif(isset($_SESSION['me']) && in_array($_SESSION['me'], $vips)){
-//  $images = get_images("http://img.amy.gy/obtanium");
+//  $images = get_images("http://img.amy.gy/obtainium");
 //}
 if(isset($_POST['images_source'])){
   $fetch = get_images($_POST['images_source']);
@@ -45,7 +45,7 @@ function dump_headers($curl, $header_line ) {
   return strlen($header_line);
 }
 
-function auth($code, $state, $client_id="https://apps.rhiaro.co.uk/obtanium"){
+function auth($code, $state, $client_id="https://apps.rhiaro.co.uk/obtainium"){
   
   $params = "code=".$code."&redirect_uri=".urlencode($state)."&state=".urlencode($state)."&client_id=".$client_id;
   $ch = curl_init("https://indieauth.com/auth");
@@ -173,7 +173,6 @@ if(isset($_POST['obtain'])){
   if(isset($_SESSION['me'])){
     $endpoint = discover_endpoint($_SESSION['me']);
     $result = post_to_endpoint(form_to_json($_POST), $endpoint);
-    var_dump(form_to_json($_POST));
   }else{
     $errors["Not signed in"] = "You need to sign in to post.";
   }

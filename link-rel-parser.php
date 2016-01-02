@@ -1,4 +1,5 @@
 <?
+error_reporting(0);
 /*
 Copied from https://github.com/indieweb/link-rel-parser-php/blob/master/src/IndieWeb/link_rel_parser.php
 Copyright 2015 Aaron Parecki
