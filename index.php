@@ -115,9 +115,9 @@ function discover_endpoint($url, $rel="micropub"){
   }
 }
 
-function as2(){
+function context(){
   return array(
-      "@context" => "https://www.w3.org/ns/activitystreams#"
+      "@context" => array("as" => "https://www.w3.org/ns/activitystreams#", "blog" => "http://vocab.amy.so/blog#")
     );
 }
 
@@ -145,12 +145,14 @@ function set_default_images(){
 }
 
 function form_to_json($post){
-  $data = as2();
+  $data = context();
   $data = $post;
   unset($data['obtain']);
-  $data['published'] = $post['year']."-".$post['month']."-".$post['day']."T".$post['time'].$post['zone'];
+  $data["@type"] = array("blog:Acquisition");
+  $data['as:published'] = $post['year']."-".$post['month']."-".$post['day']."T".$post['time'].$post['zone'];
   unset($data['year']); unset($data['month']); unset($data['day']); unset($data['time']); unset($data['zone']);
-  if(isset($post['image'])) $data['image'] = array("@id" => $post['image'][0]);
+  if(isset($post['image'])) $data['as:image'] = array("@id" => $post['image'][0]);
+  $data["blog:cost"] = $post['cost']; unset($data['cost']);
   $json = stripslashes(json_encode($data, JSON_PRETTY_PRINT));
   return $json;
 }
