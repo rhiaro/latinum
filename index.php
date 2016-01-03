@@ -145,8 +145,8 @@ function set_default_images(){
 }
 
 function form_to_json($post){
-  $data = context();
-  $data = $post;
+  $context = context();
+  $data = array_merge($context, $post);
   unset($data['obtain']);
   $data["@type"] = array("blog:Acquisition");
   $data['as:published'] = $post['year']."-".$post['month']."-".$post['day']."T".$post['time'].$post['zone'];
