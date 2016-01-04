@@ -117,7 +117,7 @@ function discover_endpoint($url, $rel="micropub"){
 
 function context(){
   return array(
-      "@context" => array("as" => "https://www.w3.org/ns/activitystreams#", "blog" => "http://vocab.amy.so/blog#")
+      "@context" => array("as" => "http://www.w3.org/ns/activitystreams#", "blog" => "http://vocab.amy.so/blog#")
     );
 }
 
@@ -152,7 +152,6 @@ function form_to_json($post){
   $data['as:published'] = $post['year']."-".$post['month']."-".$post['day']."T".$post['time'].$post['zone'];
   unset($data['year']); unset($data['month']); unset($data['day']); unset($data['time']); unset($data['zone']);
   if(isset($post['image'])) $data['as:image'] = array("@id" => $post['image'][0]);
-  $data["blog:cost"] = $post['cost']; unset($data['cost']);
   $json = stripslashes(json_encode($data, JSON_PRETTY_PRINT));
   return $json;
 }
@@ -213,8 +212,9 @@ if(isset($_POST['obtain'])){
       
       <form method="post" role="form" id="obtain">
         <p><input type="submit" value="Post" class="neat" name="obtain" /></p>
-        <p><label for="summary" class="neat">Description</label> <input type="text" name="summary" id="summary" class="neat" /></p>
-        <p><label for="cost" class="neat">Cost</label> <input type="text" name="cost" id="cost"class="neat" /></p>
+        <p><label for="summary" class="neat">Description</label> <input type="text" name="as:summary" id="summary" class="neat" /></p>
+        <p><label for="cost" class="neat">Cost</label> <input type="text" name="blog:cost" id="cost"class="neat" /></p>
+        <p><label for="tagst" class="neat">Tags</label> <input type="text" name="as:tag" id="tags"class="neat" /></p>
         <p>
           <select name="year" id="year">
             <option value="2016" selected>2016</option>
