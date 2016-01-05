@@ -124,24 +124,30 @@ function context(){
 function get_images($source=null){
   if($source){
     // TODO: get images from source
-    if(is_array($_SESSION['images']) && !empty($_SESSION['images'])){
+    if(is_array($_SESSION['images']) && !empty($_SESSION['images']) && $_SESSION['image_source'] == $source){
+      return $_SESSION['images'];
+    }else{
+      $ch = curl_init($source);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, array("Accept: application/json"));
+      $response = curl_exec($ch);
+      curl_close($ch);
+      $collection = json_decode($response, true);
+      if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
+      if(isset($aspref)){
+        $_SESSION['images'] = $collection[$aspref.":items"];
+      }else{
+        $_SESSION['images'] = $collection["items"];
+      }
+      $_SESSION['image_source'] = $collection["@id"];
       return $_SESSION['images'];
     }
-    curl_close($ch);
   }
   return false;
 }
 
 function set_default_images(){
-  $collection = json_decode(file_get_contents("http://img.amy.gy/files/food/food.json"), true);
-  if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
-  if(isset($aspref)){
-    $_SESSION['images'] = $collection[$aspref.":items"];
-  }else{
-    $_SESSION['images'] = $collection["items"];
-  }
-  $_SESSION['image_source'] = $collection["@id"];
-  
+  return get_images("http://img.amy.gy/obtainium");
 }
 
 function form_to_json($post){
