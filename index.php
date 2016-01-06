@@ -2,7 +2,8 @@
 session_start();
 date_default_timezone_set(file_get_contents("http://rhiaro.co.uk/tz"));
 if(isset($_GET['logout'])){ session_unset(); session_destroy(); header("Location: /obtainium"); }
-if(isset($_GET['reset'])) { $_SESSION['images'] = set_default_images(); header("Location: /obtainium"); }
+if(isset($_GET['reset']) && $_GET['reset'] == "images") { $_SESSION['images'] = set_default_images(); header("Location: /obtainium"); }
+if(isset($_GET['reset']) && $_GET['reset'] == "feed") { unset($_SESSION['feed']); unset($_SESSION['feed_source']); header("Location: /obtainium"); }
 
 include "link-rel-parser.php";
 
@@ -25,19 +26,15 @@ $images = set_default_images();
 
 if(isset($_SESSION['images'])){
   $images = $_SESSION['images'];
-}//elseif(isset($_SESSION['me']) && in_array($_SESSION['me'], $vips)){
-//  $images = get_images("http://img.amy.gy/obtainium");
-//}
+}
+
 if(isset($_POST['images_source'])){
   $fetch = get_images($_POST['images_source']);
   if(!$fetch){
-    $errors["Problem fetching images"] = "The images url needs to return a single page AS2 Collection as JSON.";
+    $errors["Problem fetching images"] = "The images url needs to return a single page AS2 Collection as JSON[-LD]. {$_POST['images_source']} did not return this.";
   }else{
     $images = $fetch;
   }
-}
-if(isset($images["@id"])){
-  $images_source = $images["@id"];
 }
 
 function dump_headers($curl, $header_line ) {
@@ -124,7 +121,7 @@ function context(){
 function get_images($source=null){
   if($source){
     // TODO: get images from source
-    if(is_array($_SESSION['images']) && !empty($_SESSION['images']) && $_SESSION['image_source'] == $source){
+    if(is_array($_SESSION['images']) && !empty($_SESSION['images']) && $_SESSION['images_source'] == $source){
       return $_SESSION['images'];
     }else{
       $ch = curl_init($source);
@@ -133,14 +130,16 @@ function get_images($source=null){
       $response = curl_exec($ch);
       curl_close($ch);
       $collection = json_decode($response, true);
-      if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
-      if(isset($aspref)){
-        $_SESSION['images'] = $collection[$aspref.":items"];
-      }else{
-        $_SESSION['images'] = $collection["items"];
+      if($collection){
+        if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
+        if(isset($aspref)){
+          $_SESSION['images'] = array_slice($collection[$aspref.":items"], 0, 10);
+        }else{
+          $_SESSION['images'] = array_slice($collection["items"], 0, 10);
+        }
+        $_SESSION['images_source'] = $collection["@id"];
+        return $_SESSION['images'];
       }
-      $_SESSION['image_source'] = $collection["@id"];
-      return $_SESSION['images'];
     }
   }
   return false;
@@ -241,7 +240,7 @@ if(isset($_POST['obtain'])){
         </p>
         <ul class="clearfix">
           <?foreach($images as $image):?>
-            <li class="w1of5"><p><input type="radio" name="image[]" id="image" value="<?=$image["@id"]?>" /> <label for="image"><img src="<?=$image["@id"]?>" width="100px" /></label></p></li>
+            <li class="w1of5"><p><input type="radio" name="image[]" id="image" value="<?=$image["@id"]?>" /> <label for="image"><img src="https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?url=<?=$image["@id"]?>&container=focus&resize_w=200&refresh=2592000" width="100px" /></label></p></li>
           <?endforeach?>
         </ul>
       </form>
@@ -263,16 +262,19 @@ if(isset($_POST['obtain'])){
         
         <h2>Customise</h2>
         <h3>Images</h3>
-        <?if(isset($images_source)):?>
-          <p class="wee">Your images are from <strong><?=$images_source?></strong> <a href="?reset=1">Reset</a></p>
-        <?else:?>
-          <form method="post" class="inner wee clearfix">
-            <p>If you have a directory with images you'd like to choose from, enter the URL here.</p>
-            <label for="images_source">URL of a list of images:</label>
-            <input id="images_source" name="images_source" value="http://img.amy.gy/obtainium" />
-            <input type="submit" value="Fetch" />
-          </form>
-        <?endif?>
+        <form method="post" class="inner wee clearfix">
+          <p>If you have a directory with images you'd like to choose from, enter the URL here.</p>
+          <label for="images_source">URL of a list of images:</label>
+          <input id="images_source" name="images_source" value="<?=isset($_SESSION['images_source']) ? $_SESSION['images_source'] : ""?>" />
+          <input type="submit" value="Fetch" /> <a href="?reset=images">Reset</a>
+        </form>
+        <h3>Feed</h3>
+        <form method="post" class="inner wee clearfix">
+          <p>If you have a public feed of obtainium posts you'd like to edit/delete, enter the URL here.</p>
+          <label for="feed_source">URL of a list of feed:</label>
+          <input id="feed_source" name="feed_source" value="<?=isset($_SESSION['feed_source']) ? $_SESSION['feed_source'] : ""?>" />
+          <input type="submit" value="Fetch" /> <a href="?reset=feed">Reset</a>
+        </form>
         <h3>Post...</h3>
         <form method="post" class="inner wee clearfix">
           <select name="posttype">
