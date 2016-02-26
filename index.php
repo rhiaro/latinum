@@ -37,6 +37,13 @@ if(isset($_POST['images_source'])){
   }
 }
 
+if(isset($_POST['feed_source'])){
+  $feed = get_feed($_POST['feed_source']);
+  if(!$feed){
+    $errors["Problem fetching feed"] = "Something went wrong";
+  }
+}
+
 function dump_headers($curl, $header_line ) {
   echo "<br>YEAH: ".$header_line; // or do whatever
   return strlen($header_line);
@@ -133,16 +140,44 @@ function get_images($source=null){
       if($collection){
         if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
         if(isset($aspref)){
-          $_SESSION['images'] = array_slice($collection[$aspref.":items"], 0, 10);
+          $allimages = $collection[$aspref.":items"];
         }else{
-          $_SESSION['images'] = array_slice($collection["items"], 0, 10);
+          $allimages = $collection["items"];
         }
+        $justurls = array();
+        foreach($allimages as $imgdata){
+          $justurls[] = $imgdata["@id"];
+        }
+        rsort($justurls);
+        //$_SESSION['images'] = array_slice($justurls, 0, 100);
+        $_SESSION['images'] = $justurls;
         $_SESSION['images_source'] = $collection["@id"];
         return $_SESSION['images'];
       }
     }
   }
   return false;
+}
+
+function get_feed($source=null){
+  if($source){
+    if(is_array($_SESSION['feed']) && !empty($_SESSION['feed']) && $_SESSION['feed_source'] == $source){
+      return $_SESSION['feed'];
+    }else{
+      $ch = curl_init($source);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+      curl_setopt($ch, CURLOPT_HTTPHEADER, array("Accept: application/json"));
+      $response = curl_exec($ch);
+      curl_close($ch);
+      $collection = json_decode($response, true);
+      $_SESSION['feed'] = array();
+      foreach($collection['items'] as $data){
+        $_SESSION['feed'][$data["@id"]] = $data;
+      }
+      $_SESSION['feed_source'] = $source;
+      return $_SESSION['feed'];
+    }
+  }
 }
 
 function set_default_images(){
@@ -173,6 +208,25 @@ function post_to_endpoint($json, $endpoint){
   curl_close($ch);
   
   return $response;
+}
+
+if(isset($_GET['post'])){
+  if(isset($_SESSION['feed'][$_GET['post']]['summary'])){ $upd_descr = $_SESSION['feed'][$_GET['post']]['summary']; }
+  if(isset($_SESSION['feed'][$_GET['post']]['http://vocab.amy.so/blog#cost'])){ $upd_cost = $_SESSION['feed'][$_GET['post']]['http://vocab.amy.so/blog#cost']; }
+  if(isset($_SESSION['feed'][$_GET['post']]['tag'])){
+    if(is_array($_SESSION['feed'][$_GET['post']]['tag'])) { $upd_tag = implode(', ', $_SESSION['feed'][$_GET['post']]['tag']); }
+    else{ $upd_tag = $_SESSION['feed'][$_GET['post']]['tag']; }
+  }
+  if(isset($_SESSION['feed'][$_GET['post']]['published'])){
+    $upd_date = $_SESSION['feed'][$_GET['post']]['published'];
+    $d = new DateTime($upd_date);
+    $upd_day = $d->format('j');
+    $upd_month = $d->format('n');
+    $upd_year = $d->format('Y');
+    $upd_time = $d->format('H:i:s');
+    $upd_tz = $d->format('P');
+  }
+  if(isset($_SESSION['feed'][$_GET['post']]['image'])){ $upd_image = $_SESSION['feed'][$_GET['post']]['image']; }
 }
 
 if(isset($_POST['obtain'])){
@@ -216,31 +270,41 @@ if(isset($_POST['obtain'])){
       <?endif?>
       
       <form method="post" role="form" id="obtain">
-        <p><input type="submit" value="Post" class="neat" name="obtain" /></p>
-        <p><label for="summary" class="neat">Description</label> <input type="text" name="as:summary" id="summary" class="neat" /></p>
-        <p><label for="cost" class="neat">Cost</label> <input type="text" name="blog:cost" id="cost"class="neat" /></p>
-        <p><label for="tagst" class="neat">Tags</label> <input type="text" name="as:tag" id="tags"class="neat" /></p>
+        <p><input type="submit" value="<?=isset($_GET['post']) ? "Update" : "Post"?>" class="neat" name="obtain" /></p>
+        <p><label for="summary" class="neat">Description</label> <input type="text" name="as:summary" id="summary" class="neat"<?=isset($upd_descr) ? 'value="'.$upd_descr.'"' : ""?> /></p>
+        <p><label for="cost" class="neat">Cost</label> <input type="text" name="blog:cost" id="cost"class="neat"<?=isset($upd_cost) ? 'value="'.$upd_cost.'"' : ""?> /></p>
+        <p><label for="tags" class="neat">Tags</label> <input type="text" name="as:tag" id="tags"class="neat"<?=isset($upd_tag) ? 'value="'.$upd_tag.'"' : ""?> /></p>
         <p>
           <select name="year" id="year">
-            <option value="2016" selected>2016</option>
-            <option value="2016">2015</option>
+            <option value="2016"<?isset($upd_year) && ($upd_year == "2016") ? " selected" : ""?>>2016</option>
+            <option value="2015"<?isset($upd_year) && ($upd_year == "2015") ? " selected" : ""?>>2015</option>
           </select>
           <select name="month" id="month">
             <?for($i=1;$i<=12;$i++):?>
-              <option value="<?=date("m", strtotime("2016-$i-01"))?>"<?=(date("n") == $i) ? " selected" : ""?>><?=date("M", strtotime("2016-$i-01"))?></option>
+              <option value="<?=date("m", strtotime("2016-$i-01"))?>"
+              <?if(!isset($upd_month)):?>
+                <?=(date("n") == $i) ? " selected" : ""?>
+              <?else:?>
+                <?=($upd_month == $i) ? " selected" : ""?>
+              <?endif?>><?=date("M", strtotime("2016-$i-01"))?></option>
             <?endfor?>
           </select>
           <select name="day" id="day">
             <?for($i=1;$i<=31;$i++):?>
-              <option value="<?=date("d", strtotime("2016-01-$i"))?>"<?=(date("j") == $i) ? " selected" : ""?>><?=date("d", strtotime("2016-01-$i"))?></option>
+              <option value="<?=date("d", strtotime("2016-01-$i"))?>"
+              <?if(!isset($upd_day)):?>
+                <?=(date("j") == $i) ? " selected" : ""?>
+              <?else:?>
+                <?=($upd_day == $i) ? " selected" : ""?>
+              <?endif?>><?=date("d", strtotime("2016-01-$i"))?></option>
             <?endfor?>
           </select>
-          <input type="text" name="time" id="time" value="<?=date("H:i:s")?>" />
-          <input type="text" name="zone" id="zone" value="<?=date("P")?>" />
+          <input type="text" name="time" id="time" value="<?=isset($upd_time) ? $upd_time : date("H:i:s")?>" />
+          <input type="text" name="zone" id="zone" value="<?=isset($upd_tz) ? $upd_tz : date("P")?>" />
         </p>
         <ul class="clearfix">
           <?foreach($images as $image):?>
-            <li class="w1of5"><p><input type="radio" name="image[]" id="image" value="<?=$image["@id"]?>" /> <label for="image"><img src="https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?url=<?=$image["@id"]?>&container=focus&resize_w=200&refresh=2592000" width="100px" /></label></p></li>
+            <li class="w1of5"><p><input type="radio" name="image[]" id="image" value="<?=$image?>" <?=isset($upd_image) && $upd_image == $image ? " checked" : ""?> /> <label for="image"><img title="<?=$image?>" src="https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?url=<?=$image?>&container=focus&resize_w=200&refresh=2592000" width="100px" /></label></p></li>
           <?endforeach?>
         </ul>
       </form>
@@ -275,6 +339,13 @@ if(isset($_POST['obtain'])){
           <input id="feed_source" name="feed_source" value="<?=isset($_SESSION['feed_source']) ? $_SESSION['feed_source'] : ""?>" />
           <input type="submit" value="Fetch" /> <a href="?reset=feed">Reset</a>
         </form>
+        <ul>
+          <?if(isset($_SESSION['feed'])):?>
+            <?foreach($_SESSION['feed'] as $k => $data):?>
+              <li><a href="?post=<?=$data["@id"]?>"><?=$data["summary"]?></a></li>
+            <?endforeach?>
+          <?endif?>
+        </ul>
         <h3>Post...</h3>
         <form method="post" class="inner wee clearfix">
           <select name="posttype">
