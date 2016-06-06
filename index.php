@@ -133,25 +133,20 @@ function get_images($source=null){
     }else{
       $ch = curl_init($source);
       curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-      curl_setopt($ch, CURLOPT_HTTPHEADER, array("Accept: application/json"));
+      curl_setopt($ch, CURLOPT_HTTPHEADER, array("Accept: application/activity+json"));
       $response = curl_exec($ch);
       curl_close($ch);
       $collection = json_decode($response, true);
       if($collection){
-        if(is_array($collection["@context"])) $aspref = array_search("http://www.w3.org/ns/activitystreams#", $collection["@context"]);
-        if(isset($aspref)){
-          $allimages = $collection[$aspref.":items"];
-        }else{
-          $allimages = $collection["items"];
-        }
+        $allimages = $collection["items"];
         $justurls = array();
         foreach($allimages as $imgdata){
-          $justurls[] = $imgdata["@id"];
+          $justurls[] = $imgdata["id"];
         }
         rsort($justurls);
-        //$_SESSION['images'] = array_slice($justurls, 0, 100);
-        $_SESSION['images'] = $justurls;
-        $_SESSION['images_source'] = $collection["@id"];
+        $_SESSION['images'] = array_slice($justurls, 0, 15);
+        //$_SESSION['images'] = $justurls;
+        $_SESSION['images_source'] = $collection["id"];
         return $_SESSION['images'];
       }
     }
