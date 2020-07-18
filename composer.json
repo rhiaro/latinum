@@ -1,0 +1,27 @@
+{
+    "name": "rhiaro/latinum",
+    "version": "0.0.1",
+    "license": "MIT",
+    "repositories": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rhiaro/erh"
+        }
+    ],
+    "require": {
+      "easyrdf/easyrdf": "*",
+      "ml/json-ld": "1.*",
+      "rhiaro/erh": "dev-dev"
+    },
+    "autoload": {
+      "files": [
+          "src/latinum.php"
+        ]
+    },
+    "authors": [
+      {
+        "name": "Amy Guy",
+        "homepage": "https://rhiaro.co.uk/"
+      }
+    ]
+}
