@@ -11,7 +11,7 @@
     "require": {
       "easyrdf/easyrdf": "*",
       "ml/json-ld": "1.*",
-      "rhiaro/erh": "dev-dev"
+      "rhiaro/erh": "dev-stable"
     },
     "autoload": {
       "files": [
